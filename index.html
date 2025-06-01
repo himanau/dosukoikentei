@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大の里どすこい検定</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom animation for feedback message */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center p-4">
+
+    <div id="quiz-container" class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">大の里どすこい検定</h1>
+
+        <div id="quiz-screen">
+            <div class="text-lg text-gray-700 mb-4">
+                <span id="question-counter" class="font-semibold">質問 1</span> / 20
+            </div>
+            <h2 id="question-text" class="text-xl font-semibold text-gray-800 mb-6">
+                </h2>
+            <div id="options-container" class="space-y-4">
+                </div>
+
+            <p id="feedback-message" class="mt-4 text-center font-semibold"></p>
+
+            <button id="next-button" class="mt-6 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                次の質問へ
+            </button>
+        </div>
+
+        <div id="result-screen" class="hidden text-center">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">終了！</h2>
+            <p id="final-score" class="text-xl text-gray-600 mb-6">
+                </p>
+            <button id="restart-button" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 shadow-lg">
+                もう一度プレイする
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 大の里に関するクイズの質問データ
+        const allQuestions = [
+            { question: '大の里の出身地はどこでしょう？', options: ['青森県', '石川県', '新潟県', '福岡県'], answer: '石川県' },
+            { question: '大の里が所属している相撲部屋はどこでしょう？', options: ['時津風部屋', '二所ノ関部屋', '伊勢ヶ濱部屋', '高砂部屋'], answer: '二所ノ関部屋' },
+            { question: '大の里の最高位は何でしょう？ (2025年5月現在)', options: ['関脇', '小結', '大関', '横綱'], answer: '大関' },
+            { question: '大の里の本名は何でしょう？', options: ['中村 泰輝', '佐藤 太郎', '田中 一郎', '鈴木 次郎'], answer: '中村 泰輝' },
+            { question: '大の里が初めて幕内優勝を果たしたのはいつの場所でしょう？', options: ['2024年1月場所', '2024年3月場所', '2024年5月場所', '2024年9月場所'], answer: '2024年5月場所' },
+            { question: '大の里の生年月日はいつでしょう？', options: ['1999年5月1日', '2000年6月7日', '2001年7月8日', '2002年8月9日'], answer: '2000年6月7日' },
+            { question: '大の里の身長は何cmでしょう？', options: ['180cm', '185cm', '192cm', '200cm'], answer: '192cm' },
+            { question: '大の里の体重は何kgでしょう？', options: ['160kg', '175kg', '183kg', '195kg'], answer: '183kg' },
+            { question: '大の里は小学何年生から相撲を始めましたか？', options: ['小学1年生', '小学3年生', '小学5年生', '中学1年生'], answer: '小学1年生' },
+            { question: '大の里が相撲留学した中学校はどこでしょう？', options: ['金沢市立兼六中学校', '糸魚川市立能生中学校', '新潟市立第一中学校', '津幡町立津幡中学校'], answer: '糸魚川市立能生中学校' },
+            { question: '大の里が進学した大学はどこでしょう？', options: ['日本大学', '拓殖大学', '日本体育大学', '東洋大学'], answer: '日本体育大学' },
+            { question: '大の里が学生横綱になったのはいつでしょう？', options: ['2018年', '2019年', '2020年', '2021年'], answer: '2019年' },
+            { question: '大の里がアマチュア横綱になったのはいつでしょう？', options: ['2019年', '2020年', '2021年', '2022年'], answer: '2021年' },
+            { question: '大の里がワールドゲームズで金メダルを獲得した階級は何でしょう？', options: ['軽量級', '中量級', '重量級', '無差別級'], answer: '無差別級' },
+            { question: '大の里が初土俵を踏んだのはいつの場所でしょう？', options: ['2022年1月場所', '2023年3月場所', '2023年5月場所', '2024年1月場所'], answer: '2023年5月場所' },
+            { question: '大の里が新十両に昇進したのはいつの場所でしょう？', options: ['2023年5月場所', '2023年7月場所', '2023年9月場所', '2023年11月場所'], answer: '2023年9月場所' },
+            { question: '大の里が新入幕を果たしたのはいつの場所でしょう？', options: ['2023年11月場所', '2024年1月場所', '2024年3月場所', '2024年5月場所'], answer: '2024年1月場所' },
+            { question: '大の里が新三役に昇進したのはいつの場所でしょう？', options: ['2024年1月場所', '2024年3月場所', '2024年5月場所', '2024年7月場所'], answer: '2024年5月場所' },
+            { question: '大の里が大関に昇進したのはいつの場所でしょう？', options: ['2024年7月場所', '2024年9月場所', '2024年11月場所', '2025年1月場所'], answer: '2024年11月場所' },
+            { question: '大の里の師匠である二所ノ関親方の元横綱としての四股名は何でしょう？', options: ['貴乃花', '朝青龍', '白鵬', '稀勢の里'], answer: '稀勢の里' },
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let shuffledQuestions = [];
+        let selectedOption = null; // To track if an option has been selected for the current question
+
+        // DOM要素の取得
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const questionCounter = document.getElementById('question-counter');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const nextButton = document.getElementById('next-button');
+        const finalScore = document.getElementById('final-score');
+        const restartButton = document.getElementById('restart-button');
+
+        // Tone.jsのシンセサイザーを初期化
+        const correctSynth = new Tone.Synth().toDestination();
+        const incorrectSynth = new Tone.MembraneSynth().toDestination();
+
+        // 正解時の効果音を再生
+        const playCorrectSound = () => {
+            Tone.start(); // Ensure audio context is started
+            correctSynth.triggerAttackRelease('C5', '8n'); // C5の音を8分音符で再生
+        };
+
+        // 不正解時の効果音を再生
+        const playIncorrectSound = () => {
+            Tone.start(); // Ensure audio context is started
+            incorrectSynth.triggerAttackRelease('C2', '16n'); // C2の音を16分音符で再生
+        };
+
+        // 配列をシャッフルする関数 (フィッシャー・イェーツのシャッフル)
+        const shuffleArray = (array) => {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        };
+
+        // クイズの初期化
+        const initQuiz = () => {
+            currentQuestionIndex = 0;
+            score = 0;
+            selectedOption = null;
+            feedbackMessage.textContent = '';
+            shuffledQuestions = shuffleArray([...allQuestions]); // 元の配列をコピーしてシャッフル
+
+            quizScreen.classList.remove('hidden');
+            resultScreen.classList.add('hidden');
+            displayQuestion();
+        };
+
+        // 質問の表示
+        const displayQuestion = () => {
+            const currentQuestion = shuffledQuestions[currentQuestionIndex];
+            questionCounter.textContent = `質問 ${currentQuestionIndex + 1}`;
+            questionText.textContent = currentQuestion.question;
+            optionsContainer.innerHTML = ''; // オプションをクリア
+
+            currentQuestion.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.classList.add(
+                    'w-full', 'text-left', 'py-3', 'px-4', 'rounded-xl', 'border-2',
+                    'transition', 'duration-300', 'ease-in-out',
+                    'bg-gray-100', 'border-gray-300', 'hover:bg-gray-200'
+                );
+                button.addEventListener('click', () => handleAnswerClick(button, option));
+                optionsContainer.appendChild(button);
+            });
+
+            nextButton.textContent = currentQuestionIndex === shuffledQuestions.length - 1 ? '結果を見る' : '次の質問へ';
+            nextButton.disabled = true; // 回答するまで無効
+        };
+
+        // 回答の処理
+        const handleAnswerClick = (clickedButton, option) => {
+            if (selectedOption !== null) return; // 既に回答済みなら何もしない
+
+            selectedOption = option; // 選択されたオプションを保存
+
+            const currentQuestion = shuffledQuestions[currentQuestionIndex];
+            const allOptionButtons = optionsContainer.querySelectorAll('button');
+
+            allOptionButtons.forEach(button => {
+                button.disabled = true; // 全てのオプションボタンを無効化
+                if (button.textContent === currentQuestion.answer) {
+                    // 正解のオプションを緑色にする
+                    button.classList.remove('bg-gray-100', 'border-gray-300', 'hover:bg-gray-200');
+                    button.classList.add('bg-green-200', 'border-green-500');
+                } else if (button.textContent === option) {
+                    // 選択した不正解のオプションを赤色にする
+                    button.classList.remove('bg-gray-100', 'border-gray-300', 'hover:bg-gray-200');
+                    button.classList.add('bg-red-200', 'border-red-500');
+                } else {
+                    // その他のオプションは透明度を下げる
+                    button.classList.add('opacity-70', 'cursor-not-allowed');
+                }
+            });
+
+            if (option === currentQuestion.answer) {
+                score++;
+                feedbackMessage.textContent = '正解！';
+                feedbackMessage.classList.remove('text-red-700');
+                feedbackMessage.classList.add('text-green-700', 'fade-in');
+                playCorrectSound();
+            } else {
+                feedbackMessage.textContent = `不正解... 正解は「${currentQuestion.answer}」でした。`;
+                feedbackMessage.classList.remove('text-green-700');
+                feedbackMessage.classList.add('text-red-700', 'fade-in');
+                playIncorrectSound();
+            }
+            nextButton.disabled = false; // 次の質問へボタンを有効化
+        };
+
+        // 次の質問へ進む
+        const goToNextQuestion = () => {
+            selectedOption = null; // 選択状態をリセット
+            feedbackMessage.textContent = ''; // フィードバックメッセージをクリア
+            feedbackMessage.classList.remove('fade-in'); // アニメーションクラスを削除
+
+            currentQuestionIndex++;
+            if (currentQuestionIndex < shuffledQuestions.length) {
+                displayQuestion();
+            } else {
+                showResultScreen();
+            }
+        };
+
+        // 結果画面の表示
+        const showResultScreen = () => {
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            finalScore.textContent = `あなたのスコアは ${score} / ${shuffledQuestions.length} です！`;
+        };
+
+        // イベントリスナーの設定
+        nextButton.addEventListener('click', goToNextQuestion);
+        restartButton.addEventListener('click', initQuiz);
+
+        // ページロード時にクイズを初期化
+        window.onload = initQuiz;
+    </script>
+</body>
+</html>
+
